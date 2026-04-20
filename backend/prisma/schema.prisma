@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CANDIDATE
+  ADMIN
+  EVALUATOR
+  COACH
+  SUPER_ADMIN
+}
+
+enum CefrLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  LISTENING_COMPREHENSION
+  READING_COMPREHENSION
+  FILL_IN_BLANK
+  WRITING
+  SPEAKING
+  ORDERING
+}
+
+enum SessionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+  TIMED_OUT
+}
+
+enum LessonType {
+  VIDEO
+  AUDIO
+  READING
+  EXERCISE
+  QUIZ
+  VOCABULARY
+  GRAMMAR
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  DROPPED
+}
+
+enum CoachingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  role         Role      @default(CANDIDATE)
+  cin          String?   @unique
+  phone        String?
+  region       String?
+  city         String?
+  agency       String?
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  testSessions     TestSession[]
+  enrollments      Enrollment[]
+  certificates     Certificate[]
+  coachingSessions CoachingSession[] @relation("CandidateSessions")
+  coachSessions    CoachingSession[] @relation("CoachSessions")
+  refreshTokens    RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Language {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  nameAr    String   @map("name_ar")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tests   Test[]
+  courses Course[]
+
+  @@map("languages")
+}
+
+model Test {
+  id             String    @id @default(uuid())
+  languageId     String    @map("language_id")
+  title          String
+  description    String?
+  cefrTarget     CefrLevel @map("cefr_target")
+  durationMinutes Int      @map("duration_minutes")
+  passingScore   Float     @default(60) @map("passing_score")
+  isActive       Boolean   @default(true) @map("is_active")
+  isAdaptive     Boolean   @default(false) @map("is_adaptive")
+  instructions   String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  language  Language       @relation(fields: [languageId], references: [id])
+  questions Question[]
+  sessions  TestSession[]
+
+  @@map("tests")
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  testId        String       @map("test_id")
+  type          QuestionType
+  content       String
+  contentAr     String?      @map("content_ar")
+  options       Json?
+  correctAnswer String?      @map("correct_answer")
+  audioUrl      String?      @map("audio_url")
+  imageUrl      String?      @map("image_url")
+  points        Int          @default(1)
+  orderIndex    Int          @map("order_index")
+  cefrLevel     CefrLevel?   @map("cefr_level")
+  explanation   String?
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  test    Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers Answer[]
+
+  @@map("questions")
+}
+
+model TestSession {
+  id            String        @id @default(uuid())
+  userId        String        @map("user_id")
+  testId        String        @map("test_id")
+  status        SessionStatus @default(NOT_STARTED)
+  cefrResult    CefrLevel?    @map("cefr_result")
+  score         Float?
+  totalPoints   Int?          @map("total_points")
+  earnedPoints  Int?          @map("earned_points")
+  timeTakenSecs Int?          @map("time_taken_secs")
+  startedAt     DateTime?     @map("started_at")
+  completedAt   DateTime?     @map("completed_at")
+  expiresAt     DateTime?     @map("expires_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id])
+  test         Test          @relation(fields: [testId], references: [id])
+  answers      Answer[]
+  certificates Certificate[]
+
+  @@map("test_sessions")
+}
+
+model Answer {
+  id           String   @id @default(uuid())
+  sessionId    String   @map("session_id")
+  questionId   String   @map("question_id")
+  userAnswer   String?  @map("user_answer")
+  audioUrl     String?  @map("audio_url")
+  isCorrect    Boolean? @map("is_correct")
+  pointsEarned Int?     @map("points_earned")
+  aiScore      Float?   @map("ai_score")
+  aiFeedback   String?  @map("ai_feedback")
+  answeredAt   DateTime @default(now()) @map("answered_at")
+
+  session  TestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([sessionId, questionId])
+  @@map("answers")
+}
+
+model Course {
+  id          String    @id @default(uuid())
+  languageId  String    @map("language_id")
+  title       String
+  titleAr     String?   @map("title_ar")
+  description String?
+  cefrLevel   CefrLevel @map("cefr_level")
+  thumbnail   String?
+  orderIndex  Int       @map("order_index")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  language    Language     @relation(fields: [languageId], references: [id])
+  lessons     Lesson[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id              String     @id @default(uuid())
+  courseId        String     @map("course_id")
+  title           String
+  titleAr         String?    @map("title_ar")
+  type            LessonType
+  content         Json
+  audioUrl        String?    @map("audio_url")
+  videoUrl        String?    @map("video_url")
+  durationMinutes Int        @map("duration_minutes")
+  orderIndex      Int        @map("order_index")
+  isActive        Boolean    @default(true) @map("is_active")
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("lessons")
+}
+
+model Enrollment {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  courseId    String           @map("course_id")
+  progressPct Float            @default(0) @map("progress_pct")
+  status      EnrollmentStatus @default(ACTIVE)
+  enrolledAt  DateTime         @default(now()) @map("enrolled_at")
+  completedAt DateTime?        @map("completed_at")
+  lastAccessAt DateTime?       @map("last_access_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Certificate {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  sessionId      String    @map("session_id")
+  cefrLevel      CefrLevel @map("cefr_level")
+  language       String
+  certificateUrl String?   @map("certificate_url")
+  issuedAt       DateTime  @default(now()) @map("issued_at")
+
+  user    User        @relation(fields: [userId], references: [id])
+  session TestSession @relation(fields: [sessionId], references: [id])
+
+  @@map("certificates")
+}
+
+model CoachingSession {
+  id                   String         @id @default(uuid())
+  coachId              String         @map("coach_id")
+  candidateId          String         @map("candidate_id")
+  language             String
+  status               CoachingStatus @default(SCHEDULED)
+  meetingUrl           String?        @map("meeting_url")
+  scheduledAt          DateTime       @map("scheduled_at")
+  durationMinutes      Int            @map("duration_minutes")
+  logUrl               String?        @map("log_url")
+  attendanceScreenshot String?        @map("attendance_screenshot")
+  notes                String?
+  createdAt            DateTime       @default(now()) @map("created_at")
+
+  coach     User @relation("CoachSessions", fields: [coachId], references: [id])
+  candidate User @relation("CandidateSessions", fields: [candidateId], references: [id])
+
+  @@map("coaching_sessions")
+}

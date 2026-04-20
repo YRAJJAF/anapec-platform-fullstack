@@ -1,0 +1,104 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: anapec_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: anapec_db
+      POSTGRES_USER: anapec_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anapec_secret_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U anapec_user -d anapec_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [anapec_net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: anapec_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secret_2024}
+    ports: ["6379:6379"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [anapec_net]
+
+  minio:
+    image: minio/minio:latest
+    container_name: anapec_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports: ["9000:9000","9001:9001"]
+    volumes: [minio_data:/data]
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks: [anapec_net]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: anapec_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://anapec_user:${POSTGRES_PASSWORD:-anapec_secret_2024}@postgres:5432/anapec_db
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_in_prod_access}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_in_prod_refresh}
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      AWS_S3_BUCKET: anapec-platform
+      AWS_S3_ENDPOINT: http://minio:9000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret_2024}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports: ["3001:3001"]
+    networks: [anapec_net]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: anapec_frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
+      NODE_ENV: production
+    ports: ["3000:3000"]
+    networks: [anapec_net]
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  anapec_net:
+    driver: bridge

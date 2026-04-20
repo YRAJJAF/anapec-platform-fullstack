@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600&display=swap');
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { font-family: 'Inter', system-ui, sans-serif; scroll-behavior: smooth; }
+  body { @apply bg-gray-50 text-gray-900 antialiased; }
+  [dir="rtl"] { font-family: 'Noto Sans Arabic', 'Inter', sans-serif; }
+}
+
+@layer components {
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white font-medium text-sm hover:bg-brand-700 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-brand-600 text-brand-600 font-medium text-sm hover:bg-brand-50 active:scale-[0.98] transition-all duration-150 disabled:opacity-50; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-600 font-medium text-sm hover:bg-gray-100 active:scale-[0.98] transition-all duration-150; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 text-white font-medium text-sm hover:bg-red-600 active:scale-[0.98] transition-all duration-150 disabled:opacity-50; }
+  .card { @apply bg-white rounded-2xl border border-gray-100 shadow-sm p-6; }
+  .card-hover { @apply card hover:shadow-md hover:border-brand-200 transition-all duration-200 cursor-pointer; }
+  .input { @apply w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-50 transition-colors; }
+  .label { @apply block text-sm font-medium text-gray-700 mb-1.5; }
+  .badge { @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold; }
+  .sidebar-link { @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-brand-50 hover:text-brand-700 transition-colors duration-150; }
+  .sidebar-link-active { @apply sidebar-link bg-brand-50 text-brand-700 font-semibold; }
+  .stat-card { @apply card flex flex-col gap-1; }
+  .progress-bar { @apply h-2 bg-gray-100 rounded-full overflow-hidden; }
+  .progress-fill { @apply h-full bg-brand-500 rounded-full transition-all duration-500; }
+  .question-option { @apply flex items-start gap-3 p-4 rounded-xl border-2 border-gray-100 hover:border-brand-300 hover:bg-brand-50/50 cursor-pointer transition-all duration-150; }
+  .question-option-selected { @apply question-option border-brand-500 bg-brand-50; }
+  .question-option-correct { @apply question-option border-emerald-500 bg-emerald-50; }
+  .question-option-incorrect { @apply question-option border-red-500 bg-red-50; }
+}

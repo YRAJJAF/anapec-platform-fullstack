@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+*.md
+.git
+.gitignore
+*.log
+.DS_Store
+Thumbs.db
+frontend/
+*.sql
+*.js
+!dist/*.js
